@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="bn" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>আনা-গন্ডা যৌথ মালিকের তফসিল ক্যালকুলেটর | প্রামাণ্য প্রতীক ও নির্ভুল ভাগ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .transition-smooth { transition: all 0.2s ease-in-out; }
+        select, input[type="text"], input[type="number"] { background-color: inherit; }
+        .owner-scroll {
+            max-height: 560px;
+            overflow-y: auto;
+        }
+        /* Owner row: each child gets equal space */
+        .owner-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.75rem;
+            background-color: #1f2937;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            border: 1px solid #374151;
+            transition: all 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        .owner-row > * {
+            flex: 1 1 0;
+            min-width: 0;
+        }
+        .unit-group {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            background: #111827;
+            padding: 0.2rem 0.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid #374151;
+        }
+        .unit-group label {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #9ca3af;
+            white-space: nowrap;
+        }
+        .unit-group select {
+            background: transparent;
+            border: none;
+            padding: 0.2rem 0.2rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            outline: none;
+            flex: 1;
+            min-width: 0;
+            color: #f3f4f6;
+        }
+        .unit-group select option {
+            background: #1f2937;
+            color: #f3f4f6;
+        }
+        @media (max-width: 768px) {
+            .owner-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .owner-row > * {
+                width: 100%;
+            }
+            .unit-group {
+                justify-content: space-between;
+            }
+        }
+        .result-table td, .result-table th {
+            padding: 0.75rem 0.5rem;
+            font-size: 0.85rem;
+        }
+        @media (min-width: 1024px) {
+            .result-table td, .result-table th {
+                padding: 1rem;
+                font-size: 0.95rem;
+            }
+        }
+        input, select {
+            background-color: #111827;
+            color: #f3f4f6;
+            border-color: #374151;
+        }
+        input::placeholder {
+            color: #6b7280;
+        }
+        button {
+            transition: all 0.2s;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans antialiased">
+
+<div id="root" class="w-full px-4 sm:px-6 lg:px-8 py-6 md:py-10">
+    <div id="app-container"></div>
+    <div class="text-center text-xs text-gray-400 mt-12 border-t border-gray-800 pt-6">
+        <i class="fas fa-exchange-alt mr-1"></i> 
+        <span class="font-semibold text-green-300">প্রামাণ্য রূপান্তর:</span> ১ আনা = ২০ গন্ডা | ১ গন্ডা = ৪ কড়া | ১ কড়া = ৩ ক্রান্তি | ১ ক্রান্তি = ২০ তিল
+        <div class="mt-1 text-[11px]">প্রতীক: আনা (১-১৬: নির্দিষ্ট চিহ্ন), কড়া (১-৩: ৷, ৷৷, ৸), ক্রান্তি (১-২: ৴, ৴৴), গন্ডা ও তিল — সংখ্যায় (বাংলা অঙ্ক)</div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/babel-standalone@6.26.0/babel.min.js"></script>
+
+<script type="text/babel">
+    // ---------- সঠিক প্রামাণ্য রূপান্তর ধ্রুবক (প্রচলিত খতিয়ান পদ্ধতি) ----------
+    // ১ আনা = ২০ গন্ডা, ১ গন্ডা = ৪ কড়া, ১ কড়া = ৩ ক্রান্তি, ১ ক্রান্তি = ২০ তিল
+    const TIL_PER_KRANTI = 20;
+    const TIL_PER_KORA = 3 * TIL_PER_KRANTI;     // 60
+    const TIL_PER_GONDA = 4 * TIL_PER_KORA;      // 240
+    const TIL_PER_ANA = 20 * TIL_PER_GONDA;      // 4800 (সঠিক)
+
+    // সর্বোচ্চ সীমা (প্রতিটি এককের বৈধ মান)
+    const ANA_MAX = 16;
+    const GONDA_MAX = 19;   // ০-১৯ (২০ গন্ডায় ১ আনা)
+    const KORA_MAX = 3;
+    const KRANTI_MAX = 2;
+    const TIL_MAX = 19;
+
+    // মালিকের ভাগ (তিলে) রূপান্তর
+    function ownerToTil(owner) {
+        const ana = Math.max(0, owner.ana || 0);
+        const gonda = Math.max(0, owner.gonda || 0);
+        const kora = Math.max(0, owner.kora || 0);
+        const kranti = Math.max(0, owner.kranti || 0);
+        const til = Math.max(0, owner.til || 0);
+        return (ana * TIL_PER_ANA) + (gonda * TIL_PER_GONDA) + (kora * TIL_PER_KORA) + (kranti * TIL_PER_KRANTI) + til;
+    }
+
+    // তিল থেকে আনা-গন্ডা-কড়া-ক্রান্তি-তিলে ফেরত (সঠিক বহন)
+    function tilToUnits(totalTil) {
+        let remaining = Math.floor(Math.max(0, totalTil));
+        const ana = Math.floor(remaining / TIL_PER_ANA);
+        remaining %= TIL_PER_ANA;
+        const gonda = Math.floor(remaining / TIL_PER_GONDA);
+        remaining %= TIL_PER_GONDA;
+        const kora = Math.floor(remaining / TIL_PER_KORA);
+        remaining %= TIL_PER_KORA;
+        const kranti = Math.floor(remaining / TIL_PER_KRANTI);
+        const til = remaining % TIL_PER_KRANTI;
+        return { ana, gonda, kora, kranti, til };
+    }
+
+    // ইউনিটসমূহ সুন্দরভাবে স্ট্রিং আকারে দেখানো
+    function formatUnits(units) {
+        const parts = [];
+        if (units.ana) parts.push(`${units.ana} আনা`);
+        if (units.gonda) parts.push(`${units.gonda} গন্ডা`);
+        if (units.kora) parts.push(`${units.kora} কড়া`);
+        if (units.kranti) parts.push(`${units.kranti} ক্রান্তি`);
+        if (units.til) parts.push(`${units.til} তিল`);
+        if (parts.length === 0) return "০ তিল";
+        return parts.join(' + ');
+    }
+
+    // বাংলা সংখ্যায় রূপান্তর
+    const toBengaliNum = (num) => {
+        const bengaliDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+        return num.toString().split('').map(d => bengaliDigits[parseInt(d)]).join('');
+    };
+
+    // ============= প্রামাণ্য প্রতীক ম্যাপিং (আনা, কড়া, ক্রান্তি) =============
+    const anaSymbols = {
+        1: '/', 2: '৵', 3: '৶', 4: '৷', 5: '৷⁄', 6: '৷৵', 7: '৷৶',
+        8: '৷৷', 9: '৷৷⁄', 10: '৷৷৵', 11: '৷৷৶', 12: '৸', 13: '৸⁄', 14: '৸৵', 15: '৸৶', 16: '১্'
+    };
+    const koraSymbols = { 1: '৷', 2: '৷৷', 3: '৸' };
+    const krantiSymbols = { 1: '৴', 2: '৴৴' };
+
+    // ড্রপডাউনে প্রদর্শন (সংখ্যা + প্রতীক)
+    const getDisplayForField = (field, value) => {
+        if (value === 0) return '০';
+        const bengaliNum = toBengaliNum(value);
+        if (field === 'ana' && value >= 1 && value <= 16) return `${bengaliNum} = ${anaSymbols[value]}`;
+        if (field === 'kora' && value >= 1 && value <= 3) return `${bengaliNum} = ${koraSymbols[value]}`;
+        if (field === 'kranti' && value >= 1 && value <= 2) return `${bengaliNum} = ${krantiSymbols[value]}`;
+        return bengaliNum;  // গন্ডা ও তিলের জন্য শুধু বাংলা অঙ্ক
+    };
+
+    const generateOptions = (field, max, start = 0) => {
+        let opts = [];
+        for (let i = start; i <= max; i++) {
+            opts.push(<option key={i} value={i}>{getDisplayForField(field, i)}</option>);
+        }
+        return opts;
+    };
+
+    // মালিকের ইনপুট কম্পোনেন্ট (প্রতিটি ক্ষেত্র)
+    function OwnerInput({ owner, index, onUpdate, onRemove, canRemove }) {
+        const handleChange = (field, val) => {
+            if (field === 'name') {
+                onUpdate(index, { ...owner, name: val });
+                return;
+            }
+            let num = parseInt(val, 10);
+            if (isNaN(num)) num = 0;
+            if (field === 'ana') num = Math.min(ANA_MAX, Math.max(0, num));
+            if (field === 'gonda') num = Math.min(GONDA_MAX, Math.max(0, num));
+            if (field === 'kora') num = Math.min(KORA_MAX, Math.max(0, num));
+            if (field === 'kranti') num = Math.min(KRANTI_MAX, Math.max(0, num));
+            if (field === 'til') num = Math.min(TIL_MAX, Math.max(0, num));
+            onUpdate(index, { ...owner, [field]: num });
+        };
+
+        return (
+            <div className="owner-row mb-3">
+                <input
+                    type="text"
+                    value={owner.name || ""}
+                    onChange={(e) => handleChange("name", e.target.value)}
+                    placeholder={`মালিক ${index + 1}`}
+                    className="px-2 py-1.5 border border-gray-700 rounded-lg bg-gray-800 text-white text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                    style={{ minWidth: '80px' }}
+                />
+                <div className="unit-group">
+                    <label>আনা</label>
+                    <select value={owner.ana} onChange={(e) => handleChange("ana", e.target.value)}>
+                        {generateOptions("ana", ANA_MAX)}
+                    </select>
+                </div>
+                <div className="unit-group">
+                    <label>গন্ডা</label>
+                    <select value={owner.gonda} onChange={(e) => handleChange("gonda", e.target.value)}>
+                        {generateOptions("gonda", GONDA_MAX)}
+                    </select>
+                </div>
+                <div className="unit-group">
+                    <label>কড়া</label>
+                    <select value={owner.kora} onChange={(e) => handleChange("kora", e.target.value)}>
+                        {generateOptions("kora", KORA_MAX)}
+                    </select>
+                </div>
+                <div className="unit-group">
+                    <label>ক্রান্তি</label>
+                    <select value={owner.kranti} onChange={(e) => handleChange("kranti", e.target.value)}>
+                        {generateOptions("kranti", KRANTI_MAX)}
+                    </select>
+                </div>
+                <div className="unit-group">
+                    <label>তিল</label>
+                    <select value={owner.til} onChange={(e) => handleChange("til", e.target.value)}>
+                        {generateOptions("til", TIL_MAX)}
+                    </select>
+                </div>
+                {canRemove && (
+                    <button
+                        onClick={() => onRemove(index)}
+                        className="text-red-400 hover:text-red-300 bg-red-900/30 px-3 py-1.5 rounded-full text-sm transition-all"
+                    >
+                        <i className="fas fa-trash-alt mr-1"></i>
+                    </button>
+                )}
+            </div>
+        );
+    }
+
+    // মোট যোগফল (কাঁচা যোগ) — শুধুমাত্র দ্রুত ওভারভিউ
+    function SummaryRow({ owners }) {
+        const totals = owners.reduce((acc, o) => {
+            acc.ana += o.ana;
+            acc.gonda += o.gonda;
+            acc.kora += o.kora;
+            acc.kranti += o.kranti;
+            acc.til += o.til;
+            return acc;
+        }, { ana: 0, gonda: 0, kora: 0, kranti: 0, til: 0 });
+        return (
+            <div className="flex flex-wrap justify-center gap-2 text-sm text-gray-300 bg-gray-800 p-2 rounded-lg">
+                <p><span className="text-gray-400">আনা মোট:</span> {toBengaliNum(totals.ana)}</p>
+                <p><span className="text-gray-400">গন্ডা মোট:</span> {toBengaliNum(totals.gonda)}</p>
+                <p><span className="text-gray-400">কড়া মোট:</span> {toBengaliNum(totals.kora)}</p>
+                <p><span className="text-gray-400">ক্রান্তি মোট:</span> {toBengaliNum(totals.kranti)}</p>
+                <p><span className="text-gray-400">তিল মোট:</span> {toBengaliNum(totals.til)}</p>
+            </div>
+        );
+    }
+
+    // ফলাফল কার্ড : মোট জমি (আনা-গন্ডা) + সারণি
+    function ResultCard({ owners, totalTil, totalLandDecimal, ownerShares }) {
+        if (!owners.length || totalTil === 0) {
+            return (
+                <div className="bg-yellow-900/30 border-l-4 border-yellow-600 p-4 rounded-lg mt-4">
+                    <p className="text-yellow-200"><i className="fas fa-info-circle mr-2"></i> হিসাব দেখতে "হিস্যা বের করুন" ক্লিক করুন। (অন্তত একজন মালিকের ভাগ ধনাত্মক হোক)</p>
+                </div>
+            );
+        }
+        const totalUnits = tilToUnits(totalTil);
+        return (
+            <div className="space-y-5 mt-6">
+                <div className="bg-gradient-to-r from-green-900/30 to-emerald-900/30 rounded-xl p-4 border border-green-800">
+                    <h3 className="font-bold text-lg flex items-center gap-2"><i className="fas fa-chart-pie text-green-400"></i> মোট জমির পরিমাণ (সমস্ত মালিকের ভাগের যোগফল)</h3>
+                    <p className="text-xl md:text-2xl font-mono font-semibold text-green-300">{formatUnits(totalUnits)}</p>
+                    <p className="text-sm text-gray-400 mt-1">মোট তিল: {totalTil.toLocaleString()} (প্রামাণ্য রূপান্তর: ১ আনা = ২০ গন্ডা)</p>
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="min-w-full bg-gray-800 rounded-xl overflow-hidden shadow-sm border border-gray-700 result-table">
+                        <thead className="bg-gray-700">
+                            <tr>
+                                <th className="px-3 py-2 md:px-4 md:py-3 text-left text-xs md:text-sm font-semibold text-gray-200">মালিকের নাম</th>
+                                <th className="px-3 py-2 md:px-4 md:py-3 text-left text-xs md:text-sm font-semibold text-gray-200">অংশ (১ এর মধ্যে)</th>
+                                <th className="px-3 py-2 md:px-4 md:py-3 text-left text-xs md:text-sm font-semibold text-gray-200">খতিয়ান মালিকের জমির পরিমাণ</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-700">
+                            {owners.map((owner, idx) => {
+                                const share = ownerShares[idx];
+                                const percentage = share.percentage / 100;
+                                const allocatedLand = share.allocatedLand;
+                                const ownerName = owner.name && owner.name.trim() !== '' ? owner.name : `মালিক ${idx+1}`;
+                                const landDisplay = (totalLandDecimal !== null && totalLandDecimal > 0) ? `${allocatedLand.toFixed(4)} শতক` : 'জমির পরিমাণ দেওয়া হয়নি';
+                                return (
+                                    <tr key={owner.id} className="hover:bg-gray-700/50">
+                                        <td className="px-3 py-2 text-sm text-gray-200">{ownerName}</td>
+                                        <td className="px-3 py-2 font-mono text-sm text-gray-200">{percentage.toFixed(6)}</td>
+                                        <td className="px-3 py-2 text-sm text-gray-200">{landDisplay}</td>
+                                    </tr>
+                                );
+                            })}
+                            <tr className="bg-gray-700/30 font-semibold">
+                                <td className="px-3 py-2 text-gray-200">মোট</td>
+                                <td className="px-3 py-2 text-gray-200">1.000000</td>
+                                <td className="px-3 py-2 text-gray-200">{totalLandDecimal !== null && totalLandDecimal > 0 ? `${totalLandDecimal.toFixed(2)} দশমিক` : '—'}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+    }
+
+    // মূল অ্যাপ কম্পোনেন্ট
+    function App() {
+        const generateId = () => crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random();
+
+        const loadOwners = () => {
+            const saved = localStorage.getItem('land_owners_ana20_final');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (Array.isArray(parsed) && parsed.length) {
+                        return parsed.map(owner => ({
+                            ...owner,
+                            ana: Math.min(ANA_MAX, Math.max(0, owner.ana || 0)),
+                            gonda: Math.min(GONDA_MAX, Math.max(0, owner.gonda || 0)),
+                            kora: Math.min(KORA_MAX, Math.max(0, owner.kora || 0)),
+                            kranti: Math.min(KRANTI_MAX, Math.max(0, owner.kranti || 0)),
+                            til: Math.min(TIL_MAX, Math.max(0, owner.til || 0)),
+                            name: owner.name || ''
+                        }));
+                    }
+                } catch(e) {}
+            }
+            return [{ id: generateId(), name: 'মালিক ১', ana: 0, gonda: 0, kora: 0, kranti: 0, til: 0 }];
+        };
+
+        const [owners, setOwners] = React.useState(loadOwners);
+        const [totalLand, setTotalLand] = React.useState(() => {
+            const savedLand = localStorage.getItem('total_land_ana20_final');
+            return savedLand ? parseFloat(savedLand) : 0;
+        });
+        const [calculationResult, setCalculationResult] = React.useState(null);
+        const [errorMsg, setErrorMsg] = React.useState('');
+        const [reportModalOpen, setReportModalOpen] = React.useState(false);
+        const [reportText, setReportText] = React.useState('');
+
+        React.useEffect(() => {
+            localStorage.setItem('land_owners_ana20_final', JSON.stringify(owners));
+        }, [owners]);
+        React.useEffect(() => {
+            localStorage.setItem('total_land_ana20_final', totalLand.toString());
+        }, [totalLand]);
+
+        const addOwner = () => {
+            const newId = generateId();
+            const newName = `মালিক ${owners.length + 1}`;
+            setOwners([...owners, { id: newId, name: newName, ana: 0, gonda: 0, kora: 0, kranti: 0, til: 0 }]);
+            setCalculationResult(null);
+            setErrorMsg('');
+        };
+        const updateOwner = (index, updated) => {
+            const newOwners = [...owners];
+            newOwners[index] = updated;
+            setOwners(newOwners);
+            setCalculationResult(null);
+            setErrorMsg('');
+        };
+        const removeOwner = (index) => {
+            if (owners.length === 1) {
+                setErrorMsg('অন্তত একজন মালিক থাকতে হবে');
+                return;
+            }
+            setOwners(owners.filter((_, i) => i !== index));
+            setCalculationResult(null);
+            setErrorMsg('');
+        };
+        const resetAll = () => {
+            setOwners([{ id: generateId(), name: 'মালিক ১', ana: 0, gonda: 0, kora: 0, kranti: 0, til: 0 }]);
+            setTotalLand(0);
+            setCalculationResult(null);
+            setErrorMsg('');
+        };
+
+        const handleCalculate = () => {
+            const tilValues = owners.map(owner => ownerToTil(owner));
+            const totalTil = tilValues.reduce((a,b) => a+b, 0);
+            if (totalTil === 0) {
+                setErrorMsg('মোট জমির পরিমাণ শূন্য (তিল)। কমপক্ষে একজন মালিকের ভাগ ধনাত্মক দিন (যেমন ১ তিল অথবা ১ আনা)');
+                return;
+            }
+            const ownerShares = owners.map((owner, idx) => {
+                const tilVal = tilValues[idx];
+                const percent = (tilVal / totalTil) * 100;
+                let allocated = 0;
+                if (totalLand > 0) allocated = (tilVal / totalTil) * totalLand;
+                return { tilValue: tilVal, percentage: percent, allocatedLand: allocated };
+            });
+            setCalculationResult({ totalTil, ownerShares, totalLandDecimal: totalLand > 0 ? totalLand : null });
+            setErrorMsg('');
+        };
+
+        const generateReportText = () => {
+            if (!calculationResult) return "কোন হিসাব পাওয়া যায়নি। আগে 'হিস্যা বের করুন' করুন।";
+            const { totalTil, ownerShares, totalLandDecimal } = calculationResult;
+            const totalUnits = tilToUnits(totalTil);
+            let report = `=== যৌথ মালিকানা তফসিল রিপোর্ট (প্রামাণ্য পদ্ধতি: ১ আনা = ২০ গন্ডা) ===\n`;
+            report += `মোট ভাগ (তিল): ${totalTil}\nমোট ভাগ (আনা-গন্ডা): ${formatUnits(totalUnits)}\n`;
+            if (totalLandDecimal) report += `মোট জমির পরিমাণ (ডেসিমাল): ${totalLandDecimal}\n`;
+            report += `\nমালিকদের বিস্তারিত:\n`;
+            owners.forEach((owner, idx) => {
+                const share = ownerShares[idx];
+                const ownerName = owner.name && owner.name.trim() !== '' ? owner.name : `মালিক ${idx+1}`;
+                report += `\n${ownerName}:\n`;
+                report += `  অংশ (আনা-গন্ডা-কড়া-ক্রান্তি-তিল): ${formatUnits({ ana: owner.ana, gonda: owner.gonda, kora: owner.kora, kranti: owner.kranti, til: owner.til })}\n`;
+                report += `  শতাংশ: ${share.percentage.toFixed(3)}%\n`;
+                if (totalLandDecimal) report += `  প্রাপ্ত জমি: ${share.allocatedLand.toFixed(4)} ডেসিমাল\n`;
+            });
+            return report;
+        };
+
+        const openReportModal = () => {
+            if (!calculationResult) {
+                setErrorMsg('প্রথমে হিস্যা বের করুন, তারপর রিপোর্ট দেখুন');
+                return;
+            }
+            setReportText(generateReportText());
+            setReportModalOpen(true);
+        };
+        const copyResultToClipboard = () => {
+            if (!calculationResult) {
+                setErrorMsg('কপি করতে প্রথমে হিস্যা বের করুন');
+                return;
+            }
+            navigator.clipboard.writeText(generateReportText()).then(() => alert('✅ ফলাফল ক্লিপবোর্ডে কপি হয়েছে!')).catch(() => alert('কপি করতে ব্যর্থ'));
+        };
+
+        const landInputValue = totalLand === 0 ? '' : totalLand;
+
+        return (
+            <div className="space-y-6">
+                <div className="flex flex-wrap justify-between items-center mb-6 gap-3">
+                    <div>
+                        <h1 className="text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">
+                            <i className="fas fa-calculator mr-2 text-green-400"></i> 
+                            আনা-গন্ডা যৌথ মালিকের তফসিল ক্যালকুলেটর (প্রামাণ্য প্রতীক)
+                        </h1>
+                        <p className="text-xs md:text-sm text-gray-400 mt-1">ভূমি অফিস ও খতিয়ান (সিএস, এসএ, আরএস) উপযোগী | নির্ভুল ভাগ, প্রতীকসহ আনা, গন্ডা, কড়া, ক্রান্তি, তিল</p>
+                    </div>
+                </div>
+
+                <div className="bg-gray-800/60 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-gray-700">
+                    <div className="flex flex-wrap justify-between items-center mb-5">
+                        <h2 className="text-xl font-bold flex items-center gap-2 text-gray-100"><i className="fas fa-users text-green-400"></i> মালিকগণ ({owners.length} জন)</h2>
+                        <button onClick={addOwner} className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg shadow-md transition flex items-center gap-2 text-sm">
+                            <i className="fas fa-plus-circle"></i> নতুন মালিক যোগ করুন
+                        </button>
+                    </div>
+                    <div className="owner-scroll pr-1">
+                        {owners.map((owner, idx) => (
+                            <OwnerInput key={owner.id} owner={owner} index={idx} onUpdate={updateOwner} onRemove={removeOwner} canRemove={owners.length > 1} />
+                        ))}
+                    </div>
+                </div>
+
+                <SummaryRow owners={owners} />
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-end">
+                    <div className="md:col-span-1">
+                        <label className="block text-sm font-semibold text-gray-300 mb-1"><i className="fas fa-globe-asia mr-1"></i> মোট জমি (শতক/ডেসিমাল) <span className="text-red-400">*</span></label>
+                        <input 
+                            type="number" 
+                            step="0.001" 
+                            value={landInputValue}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === '') {
+                                    setTotalLand(0);
+                                } else {
+                                    const num = parseFloat(val);
+                                    setTotalLand(isNaN(num) ? 0 : num);
+                                }
+                            }}
+                            className="w-full md:w-3/4 px-4 py-3 border border-gray-700 rounded-xl bg-gray-800 text-white shadow-sm focus:ring-2 focus:ring-green-500"
+                            placeholder="ঐচ্ছিক (যেমন ১০.৫)"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">ঐচ্ছিক: জমির মোট পরিমাণ দিলে প্রত্যেকের প্রাপ্ত ভূমি দেখাবে (শতকে)</p>
+                    </div>
+                    <div className="flex flex-wrap md:col-span-2 gap-3 justify-start md:justify-end">
+                        <button onClick={handleCalculate} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl font-semibold shadow-md transition flex items-center gap-2">
+                            <i className="fas fa-chart-line"></i> হিস্যা বের করুন
+                        </button>
+                        <button onClick={resetAll} className="bg-gray-600 hover:bg-gray-500 text-white px-5 py-3 rounded-xl shadow transition flex items-center gap-2">
+                            <i className="fas fa-undo-alt"></i> রিসেট করুন
+                        </button>
+                        <button onClick={openReportModal} className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-3 rounded-xl shadow transition flex items-center gap-2">
+                            <i className="fas fa-print"></i> রিপোর্ট করুন
+                        </button>
+                        <button onClick={copyResultToClipboard} className="bg-cyan-600 hover:bg-cyan-500 text-white px-5 py-3 rounded-xl shadow transition flex items-center gap-2">
+                            <i className="fas fa-copy"></i> কপি রেজাল্ট
+                        </button>
+                    </div>
+                </div>
+
+                {errorMsg && (
+                    <div className="bg-red-900/30 border-l-4 border-red-500 text-red-200 p-4 rounded-lg">
+                        <i className="fas fa-exclamation-triangle mr-2"></i> {errorMsg}
+                    </div>
+                )}
+
+                {calculationResult && (
+                    <ResultCard owners={owners} totalTil={calculationResult.totalTil} totalLandDecimal={calculationResult.totalLandDecimal} ownerShares={calculationResult.ownerShares} />
+                )}
+
+                <div className="mt-6 text-md border-t border-gray-800 pt-4">
+                    <h4 className="font-semibold mb-2 text-gray-300 flex items-center gap-2"><i className="fas fa-book-open text-amber-400"></i> প্রামাণ্য প্রতীক নির্দেশিকা (খতিয়ান অনুসারে):</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3 text-sm">
+                        <div className="break-words text-gray-400"><span className="font-bold text-gray-300">আনা (১-১৬):</span> ১=/, ২=৵, ৩=৶, ৪=৷, ৫=৷⁄, ৬=৷৵, ৭=৷৶, ৮=৷৷, ৯=৷৷⁄, ১০=৷৷৵, ১১=৷৷৶, ১২=৸, ১৩=৸⁄, ১৪=৸৵, ১৫=৸৶, ১৬=১্</div>
+                        <div className="break-words text-gray-400"><span className="font-bold text-gray-300">কড়া (১-৩):</span> ১=৷, ২=৷৷, ৩=৸</div>
+                        <div className="break-words text-gray-400"><span className="font-bold text-gray-300">ক্রান্তি (১-২):</span> ১=৴, ২=৴৴</div>
+                        <div className="break-words text-gray-400"><span className="font-bold text-gray-300">গন্ডা ও তিল:</span> সাধারণ সংখ্যা (বাংলা অঙ্কে দেখানো হয়)</div>
+                    </div>
+                    <div className="bg-gray-800/50 p-3 rounded-lg text-xs text-gray-300 mt-2">
+                        <i className="fas fa-link mr-1 text-green-400"></i> <span className="font-mono">রূপান্তর সূত্র:</span> ১ আনা = ২০ গন্ডা | ১ গন্ডা = ৪ কড়া | ১ কড়া = ৩ ক্রান্তি | ১ ক্রান্তি = ২০ তিল
+                    </div>
+                </div>
+
+                {reportModalOpen && (
+                    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setReportModalOpen(false)}>
+                        <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl border border-gray-700" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex justify-between items-center p-5 border-b border-gray-700">
+                                <h3 className="text-xl font-bold text-gray-100"><i className="fas fa-scroll mr-2 text-indigo-400"></i> সম্পূর্ণ তফসিল রিপোর্ট (প্রামাণ্য এককে)</h3>
+                                <button onClick={() => setReportModalOpen(false)} className="text-gray-400 hover:text-gray-200 text-2xl">&times;</button>
+                            </div>
+                            <div className="p-5 overflow-auto flex-1 bg-gray-900 rounded-b-2xl">
+                                <pre className="whitespace-pre-wrap font-mono text-sm bg-gray-800 text-gray-300 p-4 rounded-lg border border-gray-700 shadow-inner">{reportText}</pre>
+                            </div>
+                            <div className="p-4 border-t border-gray-700 flex justify-end">
+                                <button onClick={() => { navigator.clipboard.writeText(reportText); alert('রিপোর্ট কপি হয়েছে!'); }} className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg mr-2"><i className="fas fa-copy"></i> কপি</button>
+                                <button onClick={() => setReportModalOpen(false)} className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-lg">বন্ধ করুন</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    const container = document.getElementById('app-container');
+    const root = ReactDOM.createRoot(container);
+    root.render(<App />);
+</script>
+</body>
+</html>
