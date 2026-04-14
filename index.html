@@ -113,6 +113,7 @@
         <span class="font-semibold text-green-300">প্রামাণ্য রূপান্তর :</span> ১ আনা = ২০ গন্ডা | ১ গন্ডা = ৪ কড়া | ১ কড়া = ৩ ক্রান্তি | ১ ক্রান্তি = ২০ তিল
         <div class="mt-1 text-[11px]">✅ স্বয়ংক্রিয় সংশোধন: ২০ গন্ডা = ১ আনা, ৪ কড়া = ১ গন্ডা, ৩ ক্রান্তি = ১ কড়া, ২০ তিল = ১ ক্রান্তি। প্রতিটি মালিকের ভাগ নিয়মিত হয়।</div>
         <div class="mt-1 text-[11px]">প্রতীক: আনা (১-১৬: নির্দিষ্ট চিহ্ন, ১৬+ সংখ্যায়), কড়া (১-৩: ৷, ৷৷, ৸), ক্রান্তি (১-২: ৴, ৴৴)</div>
+        <div class="mt-1 text-[11px] text-amber-300">💡 জমির পরিমাণ না দিলে স্বয়ংক্রিয়ভাবে ১ দশমিক ধরে হিসাব করা হবে (কোনো ত্রুটি দেখাবে না)।</div>
     </div>
 </div>
 
@@ -132,7 +133,7 @@
     const KORA_MAX = 3;
     const KRANTI_MAX = 2;
     const TIL_MAX = 19;
-    // আনার জন্য কোনো কঠিন সীমা নেই (বড় জমির ভাগ হতে পারে), তবে UI তে 0-৫০ পর্যন্ত সিলেক্ট দেখাবে
+    // আনার জন্য কোনো কঠিন সীমা নেই (বড় জমির ভাগ হতে পারে), তবে UI তে ০-৫০ পর্যন্ত সিলেক্ট দেখাবে
     const ANA_MAX_SELECT = 50;   // ব্যবহারকারী ৫০ আনা পর্যন্ত নির্বাচন করতে পারেন
 
     // ---------- প্রামাণ্য প্রতীক ম্যাপিং ----------
@@ -323,13 +324,13 @@
         return (
             <div className="flex flex-wrap justify-center gap-3 text-sm text-gray-300 bg-gray-800 p-2 rounded-lg border border-gray-700">
                 <p><span className="text-gray-400 font-semibold">📊মোট ভাগ:</span> {formatUnits(normalizedTotal)}</p>
-                <p className="text-emerald-300 text-xs flex items-center"><i className="fas fa-check-circle mr-1"></i></p>
+                <p className="text-emerald-300 text-xs flex items-center"><i className="fas fa-check-circle mr-1"></i> স্বাভাবিকীকৃত</p>
             </div>
         );
     }
 
-    // ফলাফল কার্ড
-    function ResultCard({ owners, totalTil, totalLandDecimal, ownerShares }) {
+    // ফলাফল কার্ড - পরিবর্তিত: জমির পরিমাণ না দিলে ১ ধরে হিসাব, "জমির পরিমাণ দেওয়া হয়নি" দেখাবে না
+    function ResultCard({ owners, totalTil, effectiveLandDecimal, isLandAssumed, ownerShares }) {
         if (!owners.length || totalTil === 0) {
             return (
                 <div className="bg-yellow-900/30 border-l-4 border-yellow-600 p-4 rounded-lg mt-4">
@@ -338,12 +339,16 @@
             );
         }
         const totalUnits = tilToUnits(totalTil);
+        // প্রদর্শনের জন্য জমির পরিমাণ টেক্সট
+        const landDisplayText = isLandAssumed ? "১ দশমিক (ধরে নেওয়া)" : `${effectiveLandDecimal.toFixed(2)} দশমিক`;
+        
         return (
             <div className="space-y-5 mt-6">
                 <div className="bg-gradient-to-r from-green-900/30 to-emerald-900/30 rounded-xl p-4 border border-green-800">
                     <h3 className="font-bold text-lg flex items-center gap-2"><i className="fas fa-chart-pie text-green-400"></i> মোট জমির পরিমাণ (সমস্ত মালিকের ভাগের যোগফল)</h3>
                     <p className="text-xl md:text-2xl font-mono font-semibold text-green-300">{formatUnits(totalUnits)}</p>
                     <p className="text-sm text-gray-400 mt-1">মোট তিল: {totalTil.toLocaleString()} (প্রামাণ্য রূপান্তর: ১ আনা = ২০ গন্ডা)</p>
+                    {isLandAssumed && <p className="text-xs text-amber-300 mt-1"><i className="fas fa-info-circle mr-1"></i> জমির পরিমাণ উল্লেখ করা হয়নি, তাই ১ দশমিক ধরে হিসাব দেখানো হয়েছে।</p>}
                 </div>
 
                 <div className="overflow-x-auto">
@@ -359,9 +364,10 @@
                             {owners.map((owner, idx) => {
                                 const share = ownerShares[idx];
                                 const percentage = share.percentage / 100;
-                                const allocatedLand = share.allocatedLand;
+                                const allocatedLand = share.allocatedLand;  // ইতিমধ্যেই ১ দশমিক বা প্রকৃত জমির ভিত্তিতে গণনা করা
                                 const ownerName = owner.name && owner.name.trim() !== '' ? owner.name : `মালিক ${idx+1}`;
-                                const landDisplay = (totalLandDecimal !== null && totalLandDecimal > 0) ? `${allocatedLand.toFixed(4)} শতক` : 'জমির পরিমাণ দেওয়া হয়নি';
+                                // এখন সবসময় allocatedLand দেখাবে (কখনো 'জমির পরিমাণ দেওয়া হয়নি' দেখাবে না)
+                                const landDisplay = `${allocatedLand.toFixed(4)} শতক`;
                                 return (
                                     <tr key={owner.id} className="hover:bg-gray-700/50">
                                         <td className="px-3 py-2 text-sm text-gray-200">{ownerName}</td>
@@ -373,7 +379,7 @@
                             <tr className="bg-gray-700/30 font-semibold">
                                 <td className="px-3 py-2 text-gray-200">মোট</td>
                                 <td className="px-3 py-2 text-gray-200">1.000000</td>
-                                <td className="px-3 py-2 text-gray-200">{totalLandDecimal !== null && totalLandDecimal > 0 ? `${totalLandDecimal.toFixed(2)} দশমিক` : '—'}</td>
+                                <td className="px-3 py-2 text-gray-200">{landDisplayText}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -477,40 +483,56 @@
             setErrorMsg('');
         };
 
+        // মূল হিসাব ফাংশন: জমির পরিমাণ <=0 হলে ১ ধরে নিবে, কোনো error message দেখাবে না
         const handleCalculate = () => {
             // প্রতিটি মালিকের নরমালাইজড ভাগ ইতিমধ্যেই আছে
             const tilValues = owners.map(owner => ownerToTil(owner));
             const totalTil = tilValues.reduce((a,b) => a+b, 0);
             if (totalTil === 0) {
-                setErrorMsg('মোট জমির পরিমাণ শূন্য (তিল)। কমপক্ষে একজন মালিকের ভাগ ধনাত্মক দিন (যেমন ১ তিল অথবা ১ আনা)');
+                setErrorMsg('মোট ভাগ শূন্য (তিল)। কমপক্ষে একজন মালিকের ধনাত্মক ভাগ দিন (যেমন ১ তিল অথবা ১ আনা)');
                 return;
             }
+            
+            // জমির পরিমাণ: যদি <=0 বা NaN হয়, তাহলে ১ ধরে হিসাব করবে এবং isAssumed = true
+            let effectiveLand = 0;
+            let isAssumed = false;
+            if (totalLand > 0 && !isNaN(totalLand)) {
+                effectiveLand = totalLand;
+                isAssumed = false;
+            } else {
+                effectiveLand = 1;
+                isAssumed = true;
+            }
+            
             const ownerShares = owners.map((owner, idx) => {
                 const tilVal = tilValues[idx];
                 const percent = (tilVal / totalTil) * 100;
-                let allocated = 0;
-                if (totalLand > 0) allocated = (tilVal / totalTil) * totalLand;
+                const allocated = (tilVal / totalTil) * effectiveLand;
                 return { tilValue: tilVal, percentage: percent, allocatedLand: allocated };
             });
-            setCalculationResult({ totalTil, ownerShares, totalLandDecimal: totalLand > 0 ? totalLand : null });
+            setCalculationResult({ totalTil, ownerShares, effectiveLandDecimal: effectiveLand, isLandAssumed: isAssumed });
             setErrorMsg('');
         };
 
         const generateReportText = () => {
             if (!calculationResult) return "কোন হিসাব পাওয়া যায়নি। আগে 'হিস্যা বের করুন' করুন।";
-            const { totalTil, ownerShares, totalLandDecimal } = calculationResult;
+            const { totalTil, ownerShares, effectiveLandDecimal, isLandAssumed } = calculationResult;
             const totalUnits = tilToUnits(totalTil);
             let report = `=== যৌথ মালিকানা তফসিল রিপোর্ট (নরমালাইজড প্রামাণ্য পদ্ধতি) ===\n`;
             report += `মোট ভাগ (তিল): ${totalTil}\nমোট ভাগ (আনা-গন্ডা-কড়া-ক্রান্তি-তিল): ${formatUnits(totalUnits)}\n`;
-            if (totalLandDecimal) report += `মোট জমির পরিমাণ (ডেসিমাল): ${totalLandDecimal}\n`;
+            if (isLandAssumed) {
+                report += `মোট জমির পরিমাণ: ধরে নেওয়া হয়েছে ১ দশমিক (কারণ ইনপুট দেওয়া হয়নি)\n`;
+            } else {
+                report += `মোট জমির পরিমাণ (ডেসিমাল): ${effectiveLandDecimal}\n`;
+            }
             report += `\nমালিকদের বিস্তারিত (সঠিক নরমালাইজড ভাগ):\n`;
             owners.forEach((owner, idx) => {
                 const share = ownerShares[idx];
                 const ownerName = owner.name && owner.name.trim() !== '' ? owner.name : `মালিক ${idx+1}`;
                 report += `\n${ownerName}:\n`;
                 report += `  অংশ (আনা-গন্ডা-কড়া-ক্রান্তি-তিল): ${formatUnits({ ana: owner.ana, gonda: owner.gonda, kora: owner.kora, kranti: owner.kranti, til: owner.til })}\n`;
-                report += `  শতাংশ: ${share.percentage.toFixed(3)}%\n`;
-                if (totalLandDecimal) report += `  প্রাপ্ত জমি: ${share.allocatedLand.toFixed(4)} ডেসিমাল\n`;
+                report += `  শতাংশ: ${share.percentage.toFixed(6)}%\n`;
+                report += `  প্রাপ্ত জমি: ${share.allocatedLand.toFixed(4)} ডেসিমাল\n`;
             });
             return report;
         };
@@ -569,7 +591,7 @@
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-end">
                     <div className="md:col-span-1">
-                        <label className="block text-sm font-semibold text-gray-300 mb-1"><i className="fas fa-globe-asia mr-1"></i> মোট জমি (শতক/ডেসিমাল) <span className="text-red-400">*</span></label>
+                        <label className="block text-sm font-semibold text-gray-300 mb-1"><i className="fas fa-globe-asia mr-1"></i> মোট জমি (শতক/ডেসিমাল) <span className="text-amber-400 text-xs">(ঐচ্ছিক, খালি থাকলে ১ ধরা হবে)</span></label>
                         <input 
                             type="number" 
                             step="0.001" 
@@ -582,7 +604,7 @@
                             className="w-full md:w-3/4 px-4 py-3 border border-gray-700 rounded-xl bg-gray-800 text-white shadow-sm focus:ring-2 focus:ring-green-500"
                             placeholder="1"
                         />
-                        <p className="text-xs text-gray-400 mt-1">ঐচ্ছিক: জমির মোট পরিমাণ দিলে প্রত্যেকের প্রাপ্ত ভূমি দেখাবে</p>
+                        <p className="text-xs text-gray-400 mt-1">জমির পরিমাণ না দিলে স্বয়ংক্রিয়ভাবে ১ দশমিক ধরে হিসাব করা হবে।</p>
                     </div>
                     <div className="flex flex-wrap md:col-span-2 gap-3 justify-start md:justify-end">
                         <button onClick={handleCalculate} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl font-semibold shadow-md transition flex items-center gap-2">
@@ -607,7 +629,13 @@
                 )}
 
                 {calculationResult && (
-                    <ResultCard owners={owners} totalTil={calculationResult.totalTil} totalLandDecimal={calculationResult.totalLandDecimal} ownerShares={calculationResult.ownerShares} />
+                    <ResultCard 
+                        owners={owners} 
+                        totalTil={calculationResult.totalTil} 
+                        effectiveLandDecimal={calculationResult.effectiveLandDecimal} 
+                        isLandAssumed={calculationResult.isLandAssumed} 
+                        ownerShares={calculationResult.ownerShares} 
+                    />
                 )}
 
                 <div className="mt-6 text-md border-t border-gray-800 pt-4">
