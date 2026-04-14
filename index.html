@@ -110,7 +110,7 @@
     <div id="app-container"></div>
     <div class="text-center text-xs text-gray-400 mt-12 border-t border-gray-800 pt-6">
         <i class="fas fa-exchange-alt mr-1"></i> 
-        <span class="font-semibold text-green-300">প্রামাণ্য রূপান্তর (নরমালাইজেশন সক্রিয়):</span> ১ আনা = ২০ গন্ডা | ১ গন্ডা = ৪ কড়া | ১ কড়া = ৩ ক্রান্তি | ১ ক্রান্তি = ২০ তিল
+        <span class="font-semibold text-green-300">প্রামাণ্য রূপান্তর :</span> ১ আনা = ২০ গন্ডা | ১ গন্ডা = ৪ কড়া | ১ কড়া = ৩ ক্রান্তি | ১ ক্রান্তি = ২০ তিল
         <div class="mt-1 text-[11px]">✅ স্বয়ংক্রিয় সংশোধন: ২০ গন্ডা = ১ আনা, ৪ কড়া = ১ গন্ডা, ৩ ক্রান্তি = ১ কড়া, ২০ তিল = ১ ক্রান্তি। প্রতিটি মালিকের ভাগ নিয়মিত হয়।</div>
         <div class="mt-1 text-[11px]">প্রতীক: আনা (১-১৬: নির্দিষ্ট চিহ্ন, ১৬+ সংখ্যায়), কড়া (১-৩: ৷, ৷৷, ৸), ক্রান্তি (১-২: ৴, ৴৴)</div>
     </div>
@@ -322,7 +322,7 @@
         const normalizedTotal = tilToUnits(totalTil);
         return (
             <div className="flex flex-wrap justify-center gap-3 text-sm text-gray-300 bg-gray-800 p-2 rounded-lg border border-gray-700">
-                <p><span className="text-gray-400 font-semibold">📊 নরমালাইজড মোট ভাগ:</span> {formatUnits(normalizedTotal)}</p>
+                <p><span className="text-gray-400 font-semibold">📊মোট ভাগ:</span> {formatUnits(normalizedTotal)}</p>
                 <p className="text-emerald-300 text-xs flex items-center"><i className="fas fa-check-circle mr-1"></i></p>
             </div>
         );
@@ -537,9 +537,8 @@
                     <div>
                         <h1 className="text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">
                             <i className="fas fa-calculator mr-2 text-green-400"></i> 
-                            আনা-গন্ডা যৌথ মালিকের তফসিল (ডুপ্লিকেট + নরমালাইজেশন)
+                            আনা-গন্ডা যৌথ মালিকের তফসিল
                         </h1>
-                        <p className="text-xs md:text-sm text-gray-400 mt-1">ভূমি অফিস ও খতিয়ান উপযোগী | স্বয়ংক্রিয় সংশোধন: ২২ গন্ডা → ১ আনা ২ গন্ডা, ৪ কড়া → ১ গন্ডা ইত্যাদি</p>
                     </div>
                 </div>
 
@@ -612,7 +611,6 @@
                 )}
 
                 <div className="mt-6 text-md border-t border-gray-800 pt-4">
-                    <h4 className="font-semibold mb-2 text-gray-300 flex items-center gap-2"><i className="fas fa-sync-alt text-amber-400"></i> নরমালাইজেশন সক্রিয় (২২ গন্ডা → ১ আনা ২ গন্ডা)</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-400">
                         <div>✅ ২০ গন্ডা = ১ আনা, ৪ কড়া = ১ গন্ডা, ৩ ক্রান্তি = ১ কড়া, ২০ তিল = ১ ক্রান্তি</div>
                         <div>🔄 প্রতিটি মালিকের ভাগ স্বয়ংক্রিয়ভাবে বৈধ আনা-গন্ডা-কড়া ফরম্যাটে রূপান্তরিত হয়</div>
@@ -623,7 +621,7 @@
                     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setReportModalOpen(false)}>
                         <div className="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl border border-gray-700" onClick={(e) => e.stopPropagation()}>
                             <div className="flex justify-between items-center p-5 border-b border-gray-700">
-                                <h3 className="text-xl font-bold text-gray-100"><i className="fas fa-scroll mr-2 text-indigo-400"></i> সম্পূর্ণ তফসিল রিপোর্ট (নরমালাইজড)</h3>
+                                <h3 className="text-xl font-bold text-gray-100"><i className="fas fa-scroll mr-2 text-indigo-400"></i> সম্পূর্ণ তফসিল রিপোর্ট</h3>
                                 <button onClick={() => setReportModalOpen(false)} className="text-gray-400 hover:text-gray-200 text-2xl">&times;</button>
                             </div>
                             <div className="p-5 overflow-auto flex-1 bg-gray-900 rounded-b-2xl">
